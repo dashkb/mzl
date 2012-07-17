@@ -79,6 +79,10 @@ describe 'Class' do
         klass.mzl.new.should be_a(klass)
       end
 
+      it 'passes parameters to the original .new method' do
+        String.mzl.new("hello").should == "hello"
+      end
+
       it 'sets self to the instance' do
         catch(:instance) do
           klass.mzl.new do
