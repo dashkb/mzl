@@ -84,7 +84,7 @@ module Mzl
       _self = self
 
       # create an instance of subject
-      instance = subject.respond_to?(:mzl_orig_new) ? subject.mzl_orig_new : subject.new(*args)
+      instance = subject.respond_to?(:mzl_orig_new) ? subject.mzl_orig_new(*args) : subject.new(*args)
       instance = block_given? ? exec(instance, &block) : instance
 
       # Give the instance a mzl thing (_self)
