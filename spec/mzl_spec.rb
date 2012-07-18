@@ -118,6 +118,25 @@ describe 'Class' do
         klass.new.should_not respond_to(:properties)
       end
     end
+
+    describe '.as' do
+      it 'renames mzl to something else' do
+        klass.class_exec do
+          mzl_thing = mzl
+          mzl.as :zl
+        end
+
+        klass.should_not respond_to(:mzl)
+        klass.should respond_to(:zl)
+
+        klass.class_exec do
+          zl.as :mzl
+        end
+
+        klass.should_not respond_to(:zl)
+        klass.should respond_to(:mzl)
+      end
+    end
   end
 end
 

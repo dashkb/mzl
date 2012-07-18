@@ -18,6 +18,9 @@ module Mzl
 
       # default parameters for things
       @defaults = Hash.new({})
+
+      # our name in @subject
+      @name = :mzl
     end
 
     # this is stupid and probably only here for that test I wrote earlier
@@ -45,6 +48,14 @@ module Mzl
           end
         end
       end
+    end
+
+    def as(new_name)
+      @subject.singleton_class.class_exec(@name, new_name) do |old_name, new_name|
+        alias_method new_name, old_name
+        undef_method(old_name)
+      end
+      @name = new_name
     end
 
     # define a DSL method
