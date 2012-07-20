@@ -60,11 +60,13 @@ module Mzl
       @dsl_proxy.def(sym, @defaults[:def].merge(opts), &block)
     end
 
-    def child(sym, klass, opts = {persist: true})
-      child_method = Proc.new do |&block|
+    def child(sym, klass, opts = {})
+      opts = {persist: true}.merge(opts)
+
+      # default method for a child: ||= it to a klass.new and mzl a block in it
+      opts[:method] ||= Proc.new do |&block|
         # be a attr_reader for a new instance of the child class
-        child = instance_variable_get(:"@#{sym}")
-        child = instance_variable_set(:"@#{sym}", klass.mzl.new) unless child
+        child = ivar_or_assign(:"@#{sym}", klass.mzl.new)
 
         # mzl an optional block in the child
         child.mzl(&block) if block.is_a?(Proc)
@@ -74,21 +76,57 @@ module Mzl
       end
 
       if opts[:persist]
-        @subject.send(:define_method, sym, &child_method)
+        # permanent instance method
+        @subject.send(:define_method, sym, &opts[:method])
       else
-        self.def(sym, &child_method)
+        # mzl-only method
+        self.def(sym, &opts[:method])
       end
     end
 
     def collection(sym, klass, opts = {})
       opts = {
         persist: true,
-        plural: "#{sym}s"
+        plural: "#{sym}s",
+        type: Array
       }.merge(opts)
+
+      find_or_initialize_collection = Proc.new do
+        ivar_or_assign(:"@#{opts[:plural]}", opts[:type].new)
+      end
+
+      # add a klass.new to the collection after mzling a block in it
+      creator = Proc.new do |*args, &block|
+        # find or initialize the collection
+        collection = instance_exec(&find_or_initialize_collection)
+
+        # instantiate a klass
+        element = klass.mzl.new
+
+        # mzl an optional block
+        element.mzl(&block) if block.is_a?(Proc)
+
+        # add it to the collection
+        if collection.is_a?(Array)
+          collection << element
+        elsif collection.is_a?(Hash)
+          # args[0] is the key
+          raise ArgumentError unless args[0].is_a?(Symbol)
+          collection[args[0]] = element
+        end
+      end
+
+      child(sym, klass, method: creator, persist: false)
+
+      if opts[:persist]
+        @subject.send(:define_method, opts[:plural].to_sym, &find_or_initialize_collection)
+      else
+        self.def(opts[:plural].to_sym, &find_or_initialize_collection)
+      end
     end
 
     def array(sym, klass, opts = {})
-      collection(sym, klass, opts.merge(type: Array))
+      collection(sym, klass, opts)
     end
 
     def hash(sym, klass, opts = {})
@@ -102,6 +140,11 @@ module Mzl
 
       # create an instance of subject
       instance = subject.respond_to?(:mzl_orig_new) ? subject.mzl_orig_new(*args) : subject.new(*args)
+      
+      # Give it some superpowers
+      instance.extend(Mzl::SuperPowers)
+
+      # mzl a block
       instance = block_given? ? exec(instance, &block) : instance
 
       # Give the instance a mzl thing (_self)

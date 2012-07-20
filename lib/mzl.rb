@@ -3,6 +3,7 @@ require 'mzl/version'
 module Mzl
   autoload :Thing, 'mzl/thing'
   autoload :DSLProxy, 'mzl/dsl_proxy'
+  autoload :SuperPowers, 'mzl/super_powers'
 
   module Class
     def mzl(&block)

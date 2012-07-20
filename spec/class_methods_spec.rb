@@ -2,7 +2,12 @@ require 'spec_helper'
 
 describe 'Class.mzl' do
   let(:klass) { Class.new { mzl.override_new } }
-  let(:child_klass) { klass }
+  let(:child_klass) {
+    Class.new(klass) do
+      mzl.def(:i_am) { |val| @identity = val }
+      mzl.def(:who_am_i?, persist: true) { @identity }
+    end
+  }
 
   describe '.def' do
     it 'defines a DSL method for the subject' do
@@ -94,7 +99,7 @@ describe 'Class.mzl' do
     end
   end
 
-  describe '.array', :focus do
+  describe '.array' do
     let(:parent_klass) {
       klass.mzl.array(:thing, child_klass)
       klass
@@ -102,7 +107,7 @@ describe 'Class.mzl' do
 
     it 'defines a method to add a child to an array' do
       instance = parent_klass.new do
-        2.times { thing }
+        thing
       end
 
       instance.should respond_to(:things)
@@ -120,9 +125,31 @@ describe 'Class.mzl' do
         5.times { thing }
       end
     end
+
+    it 'stores values' do
+      parent_klass.new do
+        5.times { |i| thing { i_am i } }
+      end.things.collect(&:who_am_i?).should == [0, 1, 2, 3, 4]
+    end
+
+    it 'can be empty' do
+      parent_klass.new.things.should == []
+    end
+
+    it 'can be mzl-only' do
+      klass.mzl.array(:thing, child_klass, persist: false)
+      instance = klass.new do
+        thing { i_am 'me'}
+
+        things[0].who_am_i?.should == 'me'
+      end
+
+      instance.should_not respond_to(:things)
+      instance.instance_variable_get(:@things)[0].who_am_i?.should == 'me'
+    end
   end
 
-  describe '.hash', :focus do
+  describe '.hash' do
     let(:parent_klass) {
       klass.mzl.hash(:thing, child_klass)
       klass
@@ -130,13 +157,15 @@ describe 'Class.mzl' do
 
     it 'defines a method to add a child to a hash with a key' do
       instance = parent_klass.new do
-        thing :one
-        thing :two
+        thing(:one) { i_am 'first thing'}
+        thing(:two) { i_am 'second thing'}
       end
 
       instance.things.should be_a(Hash)
       instance.things.size.should == 2
       instance.things.keys.should == [:one, :two]
+      instance.things[:one].who_am_i?.should == 'first thing'
+      instance.things[:two].who_am_i?.should == 'second thing'
     end
   end
 end
