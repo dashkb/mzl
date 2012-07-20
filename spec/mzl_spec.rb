@@ -107,15 +107,42 @@ describe 'Class' do
           props[:foo].should == val
         end
       end
+    end
 
-      it 'can override klass.new' do
+    describe '.override_new' do
+      it 'replaces klass.new with mzl.new' do
         klass.mzl.new.should respond_to(:properties)
         klass.new.should_not respond_to(:properties)
+        klass.mzl.override_new
+        klass.new.should respond_to(:properties)
+      end
 
+      it 'can undo the override' do
         klass.mzl.override_new
         klass.new.should respond_to(:properties)
         klass.mzl.override_new(false)
         klass.new.should_not respond_to(:properties)
+      end
+
+      it 'preserves original .new behavior' do
+        subklass = Class.new(klass)
+        subklass.class_exec do
+          attr_reader :foo
+
+          def initialize
+            @foo = :bar
+          end
+
+          mzl.override_new
+        end
+
+        subklass.new.foo.should == :bar
+        subklass.mzl.new.foo.should == :bar
+        subklass.new.should respond_to(:mzl)
+
+        subklass.class_exec { mzl.override_new(false) }
+        subklass.new.foo.should == :bar
+        subklass.new.should_not respond_to(:mzl)
       end
     end
 
@@ -171,6 +198,7 @@ describe 'Mzl instances' do
 
   it 'can use the mzl thing to call dsl methods later' do
     instance = klass.mzl.new
+    instance.should_not respond_to(:add)
     expect {
       instance.mzl do
         add 1, 1, 1, 1

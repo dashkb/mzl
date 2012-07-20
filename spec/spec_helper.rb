@@ -1,8 +1,12 @@
 require 'rubygems'
 require 'spork'
+require 'simplecov'
 
-#uncomment the following line to use spork with the debugger
-#require 'spork/ext/ruby-debug'
+if ENV['COVERAGE']
+  SimpleCov.start do
+    add_filter { |file| file.filename.match(/_spec\.rb$/) }
+  end
+end
 
 Spork.prefork do
   require 'pry'

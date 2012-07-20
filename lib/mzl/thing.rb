@@ -41,11 +41,6 @@ module Mzl
         @subject.singleton_class.class_exec do
           @__mzl_new_overridden = false
           remove_method(:new) # this is the shim new we defined above
-
-          if respond_to?(:mzl_orig_new)
-            alias_method :mzl_orig_new, :new
-            remove_method(:mzl_orig_new)
-          end
         end
       end
     end

@@ -21,11 +21,6 @@
       @defs[m][1][:persist]
     end
 
-    # the proc for a def is the first element of the array in @defs[m]
-    def proc_for(m)
-      @defs[m][0]
-    end
-
     # define our DSL methods on the instance's metaclass
     def insert_mzl(instance, filter = {})
       @defs.each do |m, ary|

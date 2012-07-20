@@ -11,13 +11,5 @@ module Examples
     mzl.def :add do |*numbers|
       @total += numbers.inject(:+)
     end
-
-    mzl.def :sub do |*numbers|
-      @total -= numbers.inject(:+)
-    end
-
-    mzl.def :exp do |exp|
-      @total = total ** exp
-    end
   end
 end
