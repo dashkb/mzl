@@ -61,7 +61,7 @@ module Mzl
     end
 
     def child(sym, klass, opts = {persist: true})
-      self.def(sym) do |&block|
+      child_method = Proc.new do |&block|
         # be a attr_reader for a new instance of the child class
         child = instance_variable_get(:"@#{sym}")
         child = instance_variable_set(:"@#{sym}", klass.mzl.new) unless child
@@ -74,13 +74,9 @@ module Mzl
       end
 
       if opts[:persist]
-        @subject.send(:define_method, sym) do
-          if val = instance_variable_get(:"@#{sym}")
-            val
-          else
-            val = instance_variable_set(:"@#{sym}", klass.mzl.new)
-          end
-        end
+        @subject.send(:define_method, sym, &child_method)
+      else
+        self.def(sym, &child_method)
       end
     end
 

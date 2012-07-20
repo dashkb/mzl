@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'examples/calculate'
 
 describe 'Class' do
   let(:klass) do
@@ -36,42 +35,6 @@ describe 'Class' do
       end
 
       instance.instance_variable_get(:@properties)[:foo].should == :bar
-    end
-
-    describe '.def' do
-      it 'defines a DSL method for the subject' do
-        klass.mzl.dsl_methods.should == [:call_block, :properties, :throw_the_instance]
-      end
-
-      it 'can define methods which take blocks' do
-        catch(:block) do
-          klass.mzl.new do
-            call_block do
-              throw :block, self
-            end
-          end
-        end.should be_a(klass)
-      end
-
-      it 'executes the methods in the correct context' do
-        catch(:the_instance) do
-          klass.mzl.new do
-            throw_the_instance
-          end
-        end.should be_a(klass)
-      end
-
-      it 'takes option :persist => true to permanently define the method on the instance' do
-        klass.mzl do
-          properties[:foo] = 'whatever'
-        end.properties[:foo].should == 'whatever'
-      end
-
-      it 'by default defines methods only available during mzl' do
-        expect {
-          klass.mzl.new
-        }
-      end
     end
 
     describe '.new' do
@@ -144,6 +107,14 @@ describe 'Class' do
         subklass.new.foo.should == :bar
         subklass.new.should_not respond_to(:mzl)
       end
+
+      it 'does not pollute' do
+        subklass = Class.new(klass)
+        subklass.mzl.override_new
+
+        klass.new.should_not respond_to(:mzl)
+        subklass.new.should respond_to(:mzl)
+      end
     end
 
     describe '.as' do
@@ -168,6 +139,7 @@ describe 'Class' do
 end
 
 describe 'Mzl instances' do
+  require 'examples/calculate'
   let(:klass) { Examples::Calculate }
 
   it 'should not respond to DSL methods' do
