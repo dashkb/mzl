@@ -80,6 +80,21 @@ module Mzl
       end
     end
 
+    def collection(sym, klass, opts = {})
+      opts = {
+        persist: true,
+        plural: "#{sym}s"
+      }.merge(opts)
+    end
+
+    def array(sym, klass, opts = {})
+      collection(sym, klass, opts.merge(type: Array))
+    end
+
+    def hash(sym, klass, opts = {})
+      collection(sym, klass, opts.merge(type: Hash))
+    end
+
     # instance method not class method!
     def new(*args, &block)
       # we will need ourselves later

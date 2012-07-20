@@ -2,6 +2,7 @@ require 'spec_helper'
 
 describe 'Class.mzl' do
   let(:klass) { Class.new { mzl.override_new } }
+  let(:child_klass) { klass }
 
   describe '.def' do
     it 'defines a DSL method for the subject' do
@@ -67,7 +68,6 @@ describe 'Class.mzl' do
   end
 
   describe '.child' do
-    let(:child_klass) { klass }
     let(:parent_klass) {
       klass.mzl.child(:the_child, child_klass)
       klass
@@ -91,6 +91,52 @@ describe 'Class.mzl' do
 
     it 'is memoized' do
       instance.the_child.should == instance.the_child
+    end
+  end
+
+  describe '.array', :focus do
+    let(:parent_klass) {
+      klass.mzl.array(:thing, child_klass)
+      klass
+    }
+
+    it 'defines a method to add a child to an array' do
+      instance = parent_klass.new do
+        2.times { thing }
+      end
+
+      instance.should respond_to(:things)
+      instance.should_not respond_to(:thing)
+      instance.things.should be_a(Array)
+      instance.things.size.should == 1
+
+      expect { instance.mzl {
+        4.times { thing }
+      }}.to change { instance.things.size }.by(4)
+    end
+
+    it 'stores childs in an array' do
+      parent_klass.new do
+        5.times { thing }
+      end
+    end
+  end
+
+  describe '.hash', :focus do
+    let(:parent_klass) {
+      klass.mzl.hash(:thing, child_klass)
+      klass
+    }
+
+    it 'defines a method to add a child to a hash with a key' do
+      instance = parent_klass.new do
+        thing :one
+        thing :two
+      end
+
+      instance.things.should be_a(Hash)
+      instance.things.size.should == 2
+      instance.things.keys.should == [:one, :two]
     end
   end
 end
