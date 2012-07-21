@@ -37,6 +37,15 @@ describe 'Class' do
       instance.instance_variable_get(:@properties)[:foo].should == :bar
     end
 
+    specify 'is sane' do
+      the_mzl = nil
+      klazz = Class.new do
+        the_mzl = mzl
+      end
+
+      klazz.mzl.should == the_mzl
+    end
+
     describe '.new' do
       it 'returns an instance of of the subject class' do
         klass.mzl.new.should be_a(klass)

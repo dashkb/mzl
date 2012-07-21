@@ -44,10 +44,10 @@ describe 'Class.mzl' do
       end
 
       r = klass.new do
-        properties[:foo] = 'whatever'
+        properties[:foo] = :bar
       end
 
-      r.properties[:foo].should == 'whatever'
+      r.properties[:foo].should == :bar
     end
 
     it 'by default defines methods only available during mzl' do
@@ -68,6 +68,42 @@ describe 'Class.mzl' do
       klass.new { foo }
       klass.mzl { foo }
       Class.new.new { foo } # no mzl.override_new
+    end
+
+    it ':persist => true can be set to be default, and overridden' do
+      klass.mzl.defaults[:def][:persist] = true
+      klass.mzl.def :properties do
+        @properties ||= {}
+      end
+
+      klass.mzl.def :mzl_only, persist: false do
+        @mzl_only = :sweet
+      end
+
+      instance = klass.new do
+        properties[:foo] = :bar
+        mzl_only
+      end
+
+      instance.properties[:foo].should == :bar
+      instance.instance_variable_get(:@mzl_only).should == :sweet
+      instance.should_not respond_to(:mzl_only)
+    end
+  end
+
+  describe '.defaults' do
+    it 'returns a hash of hashes' do
+      klass.mzl.defaults.should == {}
+      klass.mzl.defaults[:foo].should == {}
+    end
+
+    it 'persists changes' do
+      klass.mzl.defaults[:foo] = :bar
+      klass.mzl.defaults[:foo].should == :bar
+      klass.mzl.defaults.should == {foo: :bar}
+
+      klass.mzl.defaults[:bar][:foo] = :bam
+      klass.mzl.defaults[:bar].should == {foo: :bam}
     end
   end
 

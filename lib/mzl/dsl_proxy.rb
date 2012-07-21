@@ -19,7 +19,6 @@
     # define a method that will be available on objects created with
     # the mzl object that created this object
     def def(m, opts, &block)
-      raise ArgumentError if defs.include?(m)
       @defs[m] = [block, opts]
     end
 

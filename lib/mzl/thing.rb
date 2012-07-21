@@ -1,6 +1,8 @@
+require 'json'
+
 module Mzl
   class Thing
-    attr_reader :subject, :defaults, :options
+    attr_reader :subject, :defaults
 
     # find or create
     def self.for(klass)
@@ -31,16 +33,18 @@ module Mzl
         @dsl_proxy = DSLProxy.new
 
         # default parameters for things
-        @defaults = Hash.new({})
+        @defaults = {}
 
         # our name in @subject
         @name = :mzl
       else
         # inherit @dsl_proxy, @defaults, and @name from supermzl
         @dsl_proxy = supermzl.instance_variable_get(:@dsl_proxy).clone
-        @defaults = supermzl.defaults.clone
+        @defaults = JSON.parse(JSON.dump(supermzl.defaults), symbolize_names: true)
         @name = supermzl.instance_variable_get(:@name)
       end
+
+      @defaults.default_proc = proc { |h, k| h[k] = {} }
     end
 
     # this is stupid and probably only here for that test I wrote earlier
@@ -76,8 +80,7 @@ module Mzl
     # define a DSL method
     def def(sym, opts = {}, &block)
       raise ArgumentError unless block_given?
-      raise ArgumentError.new("#{sym} already defined.") if @dsl_proxy.defs.include?(sym)
-      @dsl_proxy.def(sym, @defaults[:def].merge(opts), &block)
+      @dsl_proxy.def(sym, defaults[:def].merge(opts), &block)
     end
 
     def child(sym, klass, opts = {})
