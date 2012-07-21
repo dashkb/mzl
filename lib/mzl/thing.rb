@@ -2,9 +2,21 @@ module Mzl
   class Thing
     attr_reader :subject, :defaults, :options
 
+    # find or create
     def self.for(klass)
       @things_by_class ||= {}
       @things_by_class[klass] ||= new(klass)
+    end
+
+    # find or nil
+    def self.for?(klass)
+      @things_by_class ||= {}
+      @things_by_class.has_key?(klass) ? @things_by_class[klass] : nil
+    end
+
+    # superclass' mzl thing
+    def supermzl
+      @supermzl ||= Mzl::Thing.for?(@subject.superclass)
     end
 
     def initialize(subject)
@@ -13,14 +25,22 @@ module Mzl
       # the class we will be instantiating
       @subject = subject
 
-      # this object will hold our DSL methods so we don't make a mess
-      @dsl_proxy = DSLProxy.new
+      # initialize or inherit?
+      unless supermzl
+        # this object will hold our DSL methods so we don't make a mess
+        @dsl_proxy = DSLProxy.new
 
-      # default parameters for things
-      @defaults = Hash.new({})
+        # default parameters for things
+        @defaults = Hash.new({})
 
-      # our name in @subject
-      @name = :mzl
+        # our name in @subject
+        @name = :mzl
+      else
+        # inherit @dsl_proxy, @defaults, and @name from supermzl
+        @dsl_proxy = supermzl.instance_variable_get(:@dsl_proxy).clone
+        @defaults = supermzl.defaults.clone
+        @name = supermzl.instance_variable_get(:@name)
+      end
     end
 
     # this is stupid and probably only here for that test I wrote earlier
@@ -56,7 +76,7 @@ module Mzl
     # define a DSL method
     def def(sym, opts = {}, &block)
       raise ArgumentError unless block_given?
-      raise ArgumentError if @dsl_proxy.defs.include?(sym)
+      raise ArgumentError.new("#{sym} already defined.") if @dsl_proxy.defs.include?(sym)
       @dsl_proxy.def(sym, @defaults[:def].merge(opts), &block)
     end
 

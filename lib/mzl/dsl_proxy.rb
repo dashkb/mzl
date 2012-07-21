@@ -4,6 +4,18 @@
       @defs = {}
     end
 
+    # for inheritance
+    def clone
+      # clone ourselves
+      the_clone = super
+
+      # whoa who is the clone? us or them? (who cares?)
+      @defs = @defs.clone
+
+      # return the clone
+      the_clone
+    end
+
     # define a method that will be available on objects created with
     # the mzl object that created this object
     def def(m, opts, &block)

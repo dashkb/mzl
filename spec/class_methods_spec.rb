@@ -55,7 +55,6 @@ describe 'Class.mzl' do
       ping_pong = lambda { ping.pong }
       klass.mzl.def(:foo, &ping_pong) 
 
-
       expect {
         klass.class_exec { foo }
       }.to raise_exception
@@ -136,16 +135,37 @@ describe 'Class.mzl' do
       parent_klass.new.things.should == []
     end
 
+    it 'can be nested' do
+      inner = Class.new(child_klass)
+      middle = Class.new(child_klass) { mzl.array(:thing, inner) }
+      outer = Class.new(klass) { mzl.array(:thing, middle) }
+
+      instance = outer.new do
+        thing do
+          thing { i_am :one_one }
+          thing { i_am :one_two }
+        end
+
+        thing do
+          thing { i_am :two_one }
+          thing { i_am :two_two }
+        end
+      end
+
+      instance.things.first.things.last.who_am_i?.should == :one_two
+      instance.things.last.things.first.who_am_i?.should == :two_one
+    end
+
     it 'can be mzl-only' do
       klass.mzl.array(:thing, child_klass, persist: false)
       instance = klass.new do
-        thing { i_am 'me'}
+        thing { i_am :me }
 
-        things[0].who_am_i?.should == 'me'
+        things[0].who_am_i?.should == :me
       end
 
       instance.should_not respond_to(:things)
-      instance.instance_variable_get(:@things)[0].who_am_i?.should == 'me'
+      instance.instance_variable_get(:@things)[0].who_am_i?.should == :me
     end
   end
 
@@ -157,15 +177,36 @@ describe 'Class.mzl' do
 
     it 'defines a method to add a child to a hash with a key' do
       instance = parent_klass.new do
-        thing(:one) { i_am 'first thing'}
-        thing(:two) { i_am 'second thing'}
+        thing(:one) { i_am :first_thing }
+        thing(:two) { i_am :second_thing }
       end
 
       instance.things.should be_a(Hash)
       instance.things.size.should == 2
       instance.things.keys.should == [:one, :two]
-      instance.things[:one].who_am_i?.should == 'first thing'
-      instance.things[:two].who_am_i?.should == 'second thing'
+      instance.things[:one].who_am_i?.should == :first_thing
+      instance.things[:two].who_am_i?.should == :second_thing
+    end
+
+    it 'can be nested' do
+      inner = Class.new(child_klass)
+      middle = Class.new(child_klass) { mzl.hash(:thing, inner) }
+      outer = Class.new(klass) { mzl.hash(:thing, middle) }
+
+      instance = outer.new do
+        thing :one do
+          thing(:one_one) { i_am :one_one }
+          thing(:one_two) { i_am :one_two }
+        end
+
+        thing :two do
+          thing(:two_one) { i_am :two_one }
+          thing(:two_two) { i_am :two_two }
+        end
+      end
+
+      instance.things[:one].things[:one_one].who_am_i?.should == :one_one
+      instance.things[:two].things[:two_two].who_am_i?.should == :two_two
     end
   end
 end
