@@ -123,19 +123,12 @@ module Mzl
         # find or initialize the collection
         collection = instance_exec(&find_or_initialize_collection)
 
-        # instantiate a klass
-        element = klass.mzl.new
-
-        # mzl an optional block
-        element.mzl(&block) if block.is_a?(Proc)
-
-        # add it to the collection
         if collection.is_a?(Array)
-          collection << element
+          collection << klass.mzl.new(&block)
         elsif collection.is_a?(Hash)
-          # args[0] is the key
-          raise ArgumentError unless args[0].is_a?(Symbol)
-          collection[args[0]] = element
+          # first n arguments that are symbols are keys
+          keys = args.take_while { |arg| arg.is_a?(Symbol) }
+          keys.each { |key| collection[key] = klass.mzl.new(&block) }
         end
       end
 
