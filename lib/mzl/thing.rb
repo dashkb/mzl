@@ -16,6 +16,17 @@ module Mzl
       @things_by_class.has_key?(klass) ? @things_by_class[klass] : nil
     end
 
+    # easy access to an object's mzl parent
+    def self.parent_of(object)
+      object.instance_variable_get(:@__mzl_parent)
+    end
+
+    # array of mzl nesting like [parent, inner, .., innermost]
+    def self.nesting_of(object)
+      parent = parent_of(object)
+      parent ? [*nesting_of(parent), object] : [object]
+    end
+
     # superclass' mzl thing
     def supermzl
       @supermzl ||= Mzl::Thing.for?(@subject.superclass)
@@ -63,7 +74,7 @@ module Mzl
         end
       elsif @subject.singleton_class.instance_variable_get(:@__mzl_new_overridden)
         @subject.singleton_class.class_exec do
-          @__mzl_new_overridden = false
+          remove_instance_variable(:@__mzl_new_overridden)
           remove_method(:new) # this is the shim new we defined above
         end
       end
@@ -90,6 +101,9 @@ module Mzl
       opts[:method] ||= Proc.new do |&block|
         # be a attr_reader for a new instance of the child class
         child = ivar_or_assign(:"@#{sym}", klass.mzl.new)
+
+        # ensure our child won't lose us
+        child.instance_variable_set(:@__mzl_parent, self)
 
         # mzl an optional block in the child
         child.mzl(&block) if block.is_a?(Proc)
@@ -170,7 +184,7 @@ module Mzl
       end
 
       # put the permanent methods on (in case they never call mzl with a block)
-      @dsl_proxy.insert_mzl(instance, persist: true)
+      @dsl_proxy.insert_dsl(instance, persist: true)
 
       # and return it
       instance
