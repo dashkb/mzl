@@ -145,6 +145,7 @@ module Mzl
       opts = Thing.optify(:persist, *opts)
       opts[:plural] ||= "#{sym}s"
       opts[:type] ||= type
+      opts[:opaque] ||= false
 
       find_or_initialize_collection = Proc.new do
         ivar_or_assign(:"@#{opts[:plural]}", opts[:type].new)
@@ -154,15 +155,14 @@ module Mzl
       creator = Proc.new do |*args, &block|
         # find or initialize the collection
         collection = instance_exec(&find_or_initialize_collection)
+        mzl_opts = {__mzl: {parent: self, opaque_scope: opts[:opaque]}}
+        args.last.is_a?(Hash) ? args.last.merge!(mzl_opts) : args << mzl_opts
 
         if collection.is_a?(Array)
-          collection << klass.mzl.new(__mzl: {parent: self, opaque_scope: !!opts[:opaque]}, &block)
+          collection << klass.mzl.new(*args, &block)
         elsif collection.is_a?(Hash)
-          # first n arguments that are symbols are keys
-          keys = args.take_while { |arg| arg.is_a?(Symbol) }
-          keys.each do |key|
-            collection[key] = klass.mzl.new(__mzl: {parent: self, opaque_scope: !!opts[:opaque]}, &block)
-          end
+          key = args.shift
+          collection[key] = klass.mzl.new(*args, &block)
         end
       end
 
