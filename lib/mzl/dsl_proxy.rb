@@ -71,14 +71,14 @@
     def exec_for(instance, &block)
       # setup
       insert_dsl(instance)
-      insert_mm(instance)
+      insert_mm(instance) unless instance.instance_variable_get(:@__mzl_opaque_scope)
 
       # exec
       instance.instance_exec(&block)
 
       # teardown
       extract_dsl(instance)
-      extract_mm(instance)
+      extract_mm(instance) unless instance.instance_variable_get(:@__mzl_opaque_scope)
 
       # return the instance
       instance

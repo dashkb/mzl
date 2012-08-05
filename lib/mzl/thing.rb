@@ -27,6 +27,26 @@ module Mzl
       parent ? [*nesting_of(parent), object] : [object]
     end
 
+    # expects a bunch of symbols to be set to `true` in the resulting
+    # hash.  if the last argument is a hash, we build onto that hash
+    def self.optify(*args)
+      opts = args.last.is_a?(Hash) ? args.pop : {}
+
+      while args.last.is_a?(Symbol)
+        sym = args.pop
+        opts[sym] = true unless opts.has_key?(sym)
+      end
+
+      raise ArgumentError unless args.empty?
+      opts
+    end
+
+    def self.mzl_set(instance, ivars)
+      ivars.each do |k, v|
+        instance.instance_variable_set(:"@__mzl_#{k}", v)
+      end
+    end
+
     # superclass' mzl thing
     def supermzl
       @supermzl ||= Mzl::Thing.for?(@subject.superclass)
@@ -94,8 +114,8 @@ module Mzl
       @dsl_proxy.def(sym, defaults[:def].merge(opts), &block)
     end
 
-    def child(sym, klass, opts = {})
-      opts = {persist: true}.merge(opts)
+    def child(sym, klass, *opts)
+      opts = Thing.optify(:persist, *opts)
 
       # default method for a child: ||= it to a klass.new and mzl a block in it
       opts[:method] ||= Proc.new do |&block|
@@ -103,7 +123,7 @@ module Mzl
         child = ivar_or_assign(:"@#{sym}", klass.mzl.new)
 
         # ensure our child won't lose us
-        child.instance_variable_set(:@__mzl_parent, self)
+        Thing.mzl_set(child, parent: self, opaque_scope: !!opts[:opaque])
 
         # mzl an optional block in the child
         child.mzl(&block) if block.is_a?(Proc)
@@ -121,12 +141,10 @@ module Mzl
       end
     end
 
-    def collection(sym, klass, opts = {})
-      opts = {
-        persist: true,
-        plural: "#{sym}s",
-        type: Array
-      }.merge(opts)
+    def collection(sym, klass, type, *opts)
+      opts = Thing.optify(:persist, *opts)
+      opts[:plural] ||= "#{sym}s"
+      opts[:type] ||= type
 
       find_or_initialize_collection = Proc.new do
         ivar_or_assign(:"@#{opts[:plural]}", opts[:type].new)
@@ -138,11 +156,13 @@ module Mzl
         collection = instance_exec(&find_or_initialize_collection)
 
         if collection.is_a?(Array)
-          collection << klass.mzl.new(&block)
+          collection << klass.mzl.new(__mzl: {parent: self, opaque_scope: !!opts[:opaque]}, &block)
         elsif collection.is_a?(Hash)
           # first n arguments that are symbols are keys
           keys = args.take_while { |arg| arg.is_a?(Symbol) }
-          keys.each { |key| collection[key] = klass.mzl.new(&block) }
+          keys.each do |key|
+            collection[key] = klass.mzl.new(__mzl: {parent: self, opaque_scope: !!opts[:opaque]}, &block)
+          end
         end
       end
 
@@ -155,12 +175,12 @@ module Mzl
       end
     end
 
-    def array(sym, klass, opts = {})
-      collection(sym, klass, opts)
+    def array(sym, klass, *opts)
+      collection(sym, klass, Array, *opts)
     end
 
-    def hash(sym, klass, opts = {})
-      collection(sym, klass, opts.merge(type: Hash))
+    def hash(sym, klass, *opts)
+      collection(sym, klass, Hash, *opts)
     end
 
     # instance method not class method!
@@ -168,17 +188,24 @@ module Mzl
       # we will need ourselves later
       _self = self
 
+      # special mzl vars to set on the instance
+      mzl_ivars = args.pop.delete(:__mzl) if args.last.is_a?(Hash) &&
+                                         args.last.has_key?(:__mzl)
+
       # create an instance of subject
       instance = subject.respond_to?(:mzl_orig_new) ? subject.mzl_orig_new(*args) : subject.new(*args)
       
       # Give it some superpowers
       instance.extend(Mzl::SuperPowers)
 
+      # set the special mzl vars
+      Thing.mzl_set(instance, mzl_ivars) if mzl_ivars
+
       # mzl a block
       instance = block_given? ? exec(instance, &block) : instance
 
       # Give the instance a mzl thing (_self)
-      instance.singleton_class.send(:define_method, :mzl) do |&blk|
+      instance.singleton_class.send(:define_method, :mzl) do |opts = {}, &blk|
         _self.exec(self, &blk) if blk.is_a?(Proc)
         _self
       end

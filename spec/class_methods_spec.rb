@@ -257,4 +257,32 @@ describe 'Class.mzl' do
       instance.things[:two].things[:two_two].who_am_i?.should == :two_two
     end
   end
+
+  describe 'collection opacity' do
+    let(:parent_klass) { Class.new(klass) {
+      mzl.def(:foo) { |val| @foo = val }
+    }}
+
+    it 'works as expected' do
+      opaque_parent, transparent_parent = 2.times.collect { Class.new(parent_klass) }
+      opaque_parent.mzl.array(:thing, child_klass, :opaque)
+      transparent_parent.mzl.array(:thing, child_klass)
+
+      expect {
+        opaque_parent.new do
+          thing do
+            foo :bar
+          end
+        end
+      }.to raise_exception
+
+      instance = transparent_parent.new do
+        thing do
+          foo :bar
+        end
+      end
+
+      instance.instance_variable_get(:@foo).should == :bar
+    end
+  end
 end
