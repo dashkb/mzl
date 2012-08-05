@@ -68,11 +68,15 @@ module Mzl
 
         # our name in @subject
         @name = :mzl
+
+        # array of hooks to mzl after instantiating
+        @after_init_hooks = []
       else
-        # inherit @dsl_proxy, @defaults, and @name from supermzl
+        # inherit @dsl_proxy, @defaults, @name, and @after_init_hooks from supermzl
         @dsl_proxy = supermzl.instance_variable_get(:@dsl_proxy).clone
         @defaults = JSON.parse(JSON.dump(supermzl.defaults), symbolize_names: true)
         @name = supermzl.instance_variable_get(:@name)
+        @after_init_hooks = supermzl.instance_variable_get(:@after_init_hooks).clone
       end
 
       @defaults.default_proc = proc { |h, k| h[k] = {} }
@@ -183,6 +187,10 @@ module Mzl
       collection(sym, klass, Hash, *opts)
     end
 
+    def after_init(&block)
+      @after_init_hooks << block
+    end
+
     # instance method not class method!
     def new(*args, &block)
       # we will need ourselves later
@@ -201,8 +209,12 @@ module Mzl
       # set the special mzl vars
       Thing.mzl_set(instance, mzl_ivars) if mzl_ivars
 
+      # mzl after_init hooks (by the way, seriously don't use Mzl at runtime)
+      @after_init_hooks.each { |hook| exec(instance, &hook) }
+
       # mzl a block
       instance = block_given? ? exec(instance, &block) : instance
+      instance.__after_mzl if instance.respond_to?(:__after_mzl)
 
       # Give the instance a mzl thing (_self)
       instance.singleton_class.send(:define_method, :mzl) do |opts = {}, &blk|
