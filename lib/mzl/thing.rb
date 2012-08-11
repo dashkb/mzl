@@ -122,9 +122,9 @@ module Mzl
       opts = Thing.optify(:persist, *opts)
 
       # default method for a child: ||= it to a klass.new and mzl a block in it
-      opts[:method] ||= Proc.new do |&block|
+      opts[:method] ||= Proc.new do |*args, &block|
         # be a attr_reader for a new instance of the child class
-        child = ivar_or_assign(:"@#{sym}", klass.mzl.new)
+        child = ivar_or_assign(:"@#{sym}", klass.mzl.new(Thing.optify(*args)))
 
         # ensure our child won't lose us
         Thing.mzl_set(child, parent: self, opaque_scope: !!opts[:opaque])
@@ -197,12 +197,12 @@ module Mzl
       _self = self
 
       # special mzl vars to set on the instance
-      mzl_ivars = args.pop.delete(:__mzl) if args.last.is_a?(Hash) &&
+      mzl_ivars = args.last.delete(:__mzl) if args.last.is_a?(Hash) &&
                                          args.last.has_key?(:__mzl)
 
       # create an instance of subject
-      instance = subject.respond_to?(:mzl_orig_new) ? subject.mzl_orig_new(*args) : subject.new(*args)
-      
+      instance = instantiate(*args)
+
       # Give it some superpowers
       instance.extend(Mzl::SuperPowers)
 
@@ -227,6 +227,17 @@ module Mzl
 
       # and return it
       instance
+    end
+
+    # safely instantiate an object because .arity lies or I'm doing it wrong
+    def instantiate(*args)
+      _new = subject.respond_to?(:mzl_orig_new) ? :mzl_orig_new : :new
+
+      begin
+        subject.send(_new, *args)
+      rescue ArgumentError
+        subject.send(_new)
+      end
     end
 
     def exec(instance, &block)

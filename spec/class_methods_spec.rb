@@ -6,6 +6,8 @@ describe 'Class.mzl' do
     Class.new(klass) do
       mzl.def(:i_am) { |val| @identity = val }
       mzl.def(:who_am_i?, persist: true) { @identity }
+      def initialize(opts = {}) @opts = opts; end
+      attr_reader :opts
     end
   }
 
@@ -131,6 +133,23 @@ describe 'Class.mzl' do
 
     it 'is memoized' do
       instance.the_child.should == instance.the_child
+    end
+
+    it 'passes named parameters to child.new' do
+      instance.the_child(foo: 'bar').opts.should == {foo: 'bar'}
+    end
+
+    it 'only passes named parameters to child.new' do
+      expect {
+        instance.the_child('omg', foo: 'bar')
+      }.to raise_exception
+    end
+
+    it 'optifies symbols like rspec' do
+      instance.the_child(:yes!, awesome?: true).opts.should == {
+        awesome?: true,
+        yes!: true
+      }
     end
   end
 
@@ -268,6 +287,27 @@ describe 'Class.mzl' do
 
       instance.things[:one].things[:one_one].who_am_i?.should == :one_one
       instance.things[:two].things[:two_two].who_am_i?.should == :two_two
+    end
+
+    it 'passes options to instantiated item in hash' do
+      thing_class = Class.new(klass) do
+        attr_reader :args
+        def initialize(args)
+          @args = args
+        end
+      end
+
+      parent = Class.new(klass) do
+        mzl.hash(:thing, thing_class)
+      end
+
+      instance = parent.new do
+        thing :one, :this => 'that'
+        thing :two, :these => 'those'
+      end
+
+      instance.things[:one].args.should == {this: 'that'}
+      instance.things[:two].args.should == {these: 'those'}
     end
   end
 
