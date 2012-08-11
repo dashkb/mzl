@@ -1,5 +1,7 @@
  module Mzl
   class DSLProxy
+    attr_accessor :delegate_proc
+
     def initialize
       @defs = {}
     end
@@ -18,8 +20,12 @@
 
     # define a method that will be available on objects created with
     # the mzl object that created this object
-    def def(m, opts, &block)
-      @defs[m] = [block, opts]
+    def def(m, opts = nil, &block)
+      if block_given?
+        @defs[m] = [block, opts]
+      else
+        @defs[m]
+      end
     end
 
     # a list of our methods
@@ -34,12 +40,19 @@
 
     # take over method_missing
     def insert_mm(instance)
+      _delegate_proc = delegate_proc
+
       instance.singleton_class.send(:alias_method, :mzl_orig_mm, :method_missing)
       instance.singleton_class.send(:define_method, :method_missing) do |m, *args, &block|
         if Mzl::Thing.nesting_of(self).any? { |object| object.respond_to?(m) }
           @__mzl_parent.send(m, *args, &block)
         else
-          mzl_orig_mm(m, *args, &block)
+          begin
+            mzl_orig_mm(m, *args, &block)
+          rescue NameError
+            raise unless _delegate_proc.is_a?(Proc) && delegate = instance.instance_exec(&_delegate_proc)
+            delegate.send(m, *args, &block)
+          end
         end
       end
     end

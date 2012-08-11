@@ -2,7 +2,7 @@ require 'json'
 
 module Mzl
   class Thing
-    attr_reader :subject, :defaults
+    attr_reader :subject, :defaults, :dsl_proxy
 
     # find or create
     def self.for(klass)
@@ -102,6 +102,11 @@ module Mzl
           remove_method(:new) # this is the shim new we defined above
         end
       end
+    end
+
+    def delegate(&block)
+      raise ArgumentError unless block.is_a?(Proc)
+      @dsl_proxy.delegate_proc = block
     end
 
     def as(new_name)
