@@ -93,6 +93,52 @@ describe 'Class.mzl' do
     end
   end
 
+  describe '.alias' do
+    it 'creates another name for a method' do
+      child_klass.mzl.alias(:me_am, :i_am)
+      bizarro = child_klass.new { me_am 'superman' }
+      bizarro.who_am_i?.should == 'superman'
+    end
+
+    describe 'with options provided' do
+      before(:each) do
+        klass.mzl.array :thing, child_klass
+        klass.mzl.alias :big_thing, :thing, :big
+      end
+
+      it 'discards options for methods that are not expecting any' do
+        child_klass.mzl.alias :me_am, :i_am, :awesome
+        not_awesome = child_klass.new { me_am 'superman', :awesome }
+
+        not_awesome.who_am_i?.should == 'superman'
+        not_awesome.opts[:awesome].should_not be_true
+      end
+
+      it 'calls the aliased method with the options' do
+        thing_jar = klass.new do
+          thing { i_am :thing_one }
+          big_thing { i_am :thing_two }
+        end
+
+        thing_jar.things.first.who_am_i?.should == :thing_one
+        thing_jar.things.last.who_am_i?.should == :thing_two
+
+        thing_jar.things.last.opts[:big].should be_true
+        thing_jar.things.first.opts[:big].should be_nil
+      end
+
+      it 'will not clobber passed options' do
+        thing_jar = klass.new do
+          big_thing { i_am :thing_one }
+          big_thing(big: false) { i_am :thing_two }
+        end
+
+        thing_jar.things.first.opts[:big].should be_true
+        thing_jar.things.last.opts[:big].should be_false
+      end
+    end
+  end
+
   describe '.defaults' do
     it 'returns a hash of hashes' do
       klass.mzl.defaults.should == {}

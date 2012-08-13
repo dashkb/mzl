@@ -41,6 +41,19 @@ module Mzl
       opts
     end
 
+    # Like optify, but return an array like [arg, arg, {optified}]
+    # to include regular arguments too
+    def self.argify(*args)
+      regular_args = args.take_while { |arg| !arg.is_a?(Symbol) && !arg.is_a?(Hash) }
+      options = optify(*(args - regular_args))
+
+      if options.any?
+        regular_args << options
+      else
+        regular_args
+      end
+    end
+
     def self.mzl_set(instance, ivars)
       ivars.each do |k, v|
         instance.instance_variable_set(:"@__mzl_#{k}", v)
@@ -121,6 +134,27 @@ module Mzl
     def def(sym, opts = {}, &block)
       raise ArgumentError unless block_given?
       @dsl_proxy.def(sym, defaults[:def].merge(opts), &block)
+    end
+
+    # alias a DSL method, with some optional options
+    def alias(new_method, current_method, *opts)
+      opts = Thing.optify(*opts)
+      self.def(new_method) do |*args, &block|
+        args = Thing.argify(*args)
+        if args.last.is_a?(Hash) && opts.any?
+          args.push(opts.merge(args.pop))
+        elsif opts.any?
+          args << opts
+        end
+
+        begin
+          self.send(current_method, *args, &block)
+        rescue ArgumentError
+          # Try again, but only if we added a opts hash just now (after removing it)
+          args.last == opts ? args.pop : raise
+          self.send(current_method, *args, &block)
+        end
+      end
     end
 
     def child(sym, klass, *opts)
