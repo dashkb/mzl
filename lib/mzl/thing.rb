@@ -139,8 +139,18 @@ module Mzl
     # alias a DSL method, with some optional options
     def alias(new_method, current_method, *opts)
       opts = Thing.optify(*opts)
-      self.def(new_method) do |*args, &block|
-        args = Thing.argify(*args)
+      # If this is a named child (currently that means Hash)
+      # we need to snag the first arg for the name
+      pass_first_arg = dsl_proxy.def(current_method)[1][:type] == Hash
+
+      self.def(new_method) do |*_args, &block|
+        # Take care of hashes
+        args = pass_first_arg ? [_args.shift] : []
+
+        # Then argify
+        args += Thing.argify(*_args)
+
+        # Merge opts hash (if provided) into the defaults (if any)
         if args.last.is_a?(Hash) && opts.any?
           args.push(opts.merge(args.pop))
         elsif opts.any?
@@ -150,7 +160,8 @@ module Mzl
         begin
           self.send(current_method, *args, &block)
         rescue ArgumentError
-          # Try again, but only if we added a opts hash just now (after removing it)
+          # Try again, but only if we added a opts hash just now
+          # (after removing it)
           args.last == opts ? args.pop : raise
           self.send(current_method, *args, &block)
         end
@@ -180,7 +191,7 @@ module Mzl
         @subject.send(:define_method, sym, &opts[:method])
       else
         # mzl-only method
-        self.def(sym, &opts[:method])
+        self.def(sym, opts, &opts[:method])
       end
     end
 
@@ -209,12 +220,12 @@ module Mzl
         end
       end
 
-      child(sym, klass, method: creator, persist: false)
+      child(sym, klass, method: creator, persist: false, type: opts[:type])
 
       if opts[:persist]
         @subject.send(:define_method, opts[:plural].to_sym, &find_or_initialize_collection)
       else
-        self.def(opts[:plural].to_sym, &find_or_initialize_collection)
+        self.def(opts[:plural].to_sym, opts, &find_or_initialize_collection)
       end
     end
 
