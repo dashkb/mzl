@@ -101,19 +101,6 @@ describe 'Class.mzl' do
       instance.things[:two].who_am_i?.should == :second_thing
     end
 
-    # Not doing this anymore
-    xit 'will run the same block on multiple keys' do
-      instance = parent_klass.new do
-        thing(:one, :two) { i_am :one_or_two }
-        thing(:three, :four) { i_am :three_or_four }
-      end
-
-      instance.things.should be_a(Hash)
-      instance.things.size.should == 4
-      instance.things[:one].who_am_i?.should == :one_or_two
-      instance.things[:four].who_am_i?.should == :three_or_four
-    end
-
     it 'allows arbitrary keys and values' do
       instance = parent_klass.new do
         thing(:one) { i_am :thing_one }
