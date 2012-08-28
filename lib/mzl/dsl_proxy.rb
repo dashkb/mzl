@@ -55,12 +55,20 @@
           end
         end
       end
+
+      instance.singleton_class.send(:alias_method, :mzl_orig_respond_to?, :respond_to?)
+      instance.singleton_class.send(:define_method, :respond_to?) do |m|
+        self.class.mzl.dsl_proxy.defs.include?(m) || mzl_orig_respond_to?(m)
+      end
     end
 
     # release method_missing
     def extract_mm(instance)
       instance.singleton_class.send(:remove_method, :method_missing)
       instance.singleton_class.send(:alias_method, :method_missing, :mzl_orig_mm)
+
+      instance.singleton_class.send(:remove_method, :respond_to?)
+      instance.singleton_class.send(:alias_method, :respond_to?, :mzl_orig_respond_to?)
     end
 
     # define our DSL methods on the instance's metaclass

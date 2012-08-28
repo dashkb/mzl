@@ -1,7 +1,8 @@
 require 'spec_helper'
 
 describe 'Class.mzl' do
-  let(:klass) { Class.new { mzl.override_new } }
+  let(:superclass) { Class.new { mzl.override_new } }
+  let(:klass) { Class.new(superclass) }
   let(:child_klass) {
     Class.new(klass) do
       mzl.def(:i_am) { |val| @identity = val }
@@ -149,6 +150,22 @@ describe 'Class.mzl' do
         thing_jar.named_things.keys.should == [:one, :two]
         thing_jar.named_things[:one].opts[:big].should be_false
         thing_jar.named_things[:two].opts[:big].should be_true
+      end
+
+      it 'works through a delegate' do
+        delegator = Class.new(superclass) do
+          def initialize(delegate)
+            @delegate = delegate_clas
+          end
+
+          mzl.delegate { @delegate }
+        end
+
+        expect {
+          thing_jar = delegator.new(klass.new) do
+            big_named_thing(:two) { i_am :thing_two }
+          end
+        }.to_not raise_exception(NoMethodError)
       end
     end
   end
