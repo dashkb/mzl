@@ -135,6 +135,14 @@ describe 'Class.mzl' do
 
       expect { instance.bar }.to raise_exception(NoMethodError)
     end
+
+    it 'accepts a block that can be instance execd to return the default value' do
+      klass.mzl.attr(:foo) { :bar }
+
+      instance = klass.new do
+        foo.should == :bar
+      end
+    end
   end
 
   describe '.alias' do

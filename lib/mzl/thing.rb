@@ -84,6 +84,7 @@ module Mzl
 
         # array of hooks to mzl after instantiating
         @after_init_hooks = []
+
       else
         # inherit @dsl_proxy, @defaults, @name, and @after_init_hooks from supermzl
         @dsl_proxy = supermzl.instance_variable_get(:@dsl_proxy).clone
@@ -169,7 +170,7 @@ module Mzl
       end
     end
 
-    def attr(sym, *opts)
+    def attr(sym, *opts, &block)
       opts = Thing.optify(*opts)
 
       unless subject.instance_methods.include?(:__mzl_attr_opts)
@@ -182,10 +183,14 @@ module Mzl
         ivar = :"@#{sym}"
 
         if val
-          instance_variable_set(ivar, val)
           @__mzl_attr_opts[sym] = Thing.optify(*opts)
+          instance_variable_set(ivar, val)
         else
-          instance_variable_get(ivar)
+          if block.is_a?(Proc)
+            ivar_or_assign(ivar, block.call)
+          else
+            instance_variable_get(ivar)
+          end
         end
       end
     end
