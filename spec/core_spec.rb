@@ -108,6 +108,33 @@ describe 'Class.mzl' do
         instance.foo :bar
       }.to raise_exception(ArgumentError)
     end
+
+    it 'slips passed options into the value' do
+      klass.mzl.attr(:foo)
+
+      instance = klass.new do
+        foo :bar, :awesome, :right?, i: 'agree'
+      end
+
+      instance.foo.should == :bar
+      instance.__mzl_attr_opts[:foo][:awesome].should be_true
+      instance.__mzl_attr_opts[:foo][:right?].should be_true
+      instance.__mzl_attr_opts[:foo][:i].should == 'agree'
+    end
+
+    it 'can be aliased' do
+      klass.mzl.attr(:foo)
+      klass.mzl.alias(:bar, :foo, :aliased?)
+
+      instance = klass.new do
+        bar :foo
+      end
+
+      instance.foo.should == :foo
+      instance.__mzl_attr_opts[:foo][:aliased?].should be_true
+
+      expect { instance.bar }.to raise_exception(NoMethodError)
+    end
   end
 
   describe '.alias' do

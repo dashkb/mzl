@@ -142,7 +142,7 @@ module Mzl
       opts = Thing.optify(*opts)
       # If this is a named child (currently that means Hash)
       # we need to snag the first arg for the name
-      pass_first_arg = dsl_proxy.def(current_method)[1][:type] == Hash
+      pass_first_arg = [Hash, :attr].include?(dsl_proxy.def(current_method)[1][:type])
 
       self.def(new_method) do |*_args, &block|
         # Take care of hashes
@@ -172,13 +172,20 @@ module Mzl
     def attr(sym, *opts)
       opts = Thing.optify(*opts)
 
-      self.def(sym, :persist) do |val = nil|
+      unless subject.instance_methods.include?(:__mzl_attr_opts)
+        subject.send(:attr_reader, :__mzl_attr_opts)
+        after_init { @__mzl_attr_opts ||= {} }
+      end
+
+      self.def(sym, :persist, type: :attr) do |val = nil, *opts|
         raise ArgumentError unless val.nil? || @__mzling
+        ivar = :"@#{sym}"
 
         if val
-          instance_variable_set(:"@#{sym}", val)
+          instance_variable_set(ivar, val)
+          @__mzl_attr_opts[sym] = Thing.optify(*opts)
         else
-          instance_variable_get(:"@#{sym}")
+          instance_variable_get(ivar)
         end
       end
     end
