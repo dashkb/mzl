@@ -10,17 +10,6 @@ describe 'Class.mzl.delegate' do
     end
   }}
 
-  it 'expects a block returning a delegate object when instance_execd' do
-    expect {
-      instance = klass.new(:srsly?) do
-        missing_method
-      end
-    }.to raise_exception(
-      NoMethodError,
-      %{undefined method `missing_method' for :srsly?:Symbol}
-    )
-  end
-
   it 'forwards missing methods to the delegate' do
     delegate = Class.new {
       def missing_method; @mzl_was_here = true; end

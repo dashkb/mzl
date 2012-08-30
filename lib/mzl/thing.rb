@@ -131,8 +131,9 @@ module Mzl
     end
 
     # define a DSL method
-    def def(sym, opts = {}, &block)
+    def def(sym, *opts, &block)
       raise ArgumentError unless block_given?
+      opts = Thing.optify(*opts)
       @dsl_proxy.def(sym, defaults[:def].merge(opts), &block)
     end
 
@@ -164,6 +165,20 @@ module Mzl
           # (after removing it)
           args.last == opts ? args.pop : raise
           self.send(current_method, *args, &block)
+        end
+      end
+    end
+
+    def attr(sym, *opts)
+      opts = Thing.optify(*opts)
+
+      self.def(sym, :persist) do |val = nil|
+        raise ArgumentError unless val.nil? || @__mzling
+
+        if val
+          instance_variable_set(:"@#{sym}", val)
+        else
+          instance_variable_get(:"@#{sym}")
         end
       end
     end

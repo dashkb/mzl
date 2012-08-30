@@ -94,6 +94,22 @@ describe 'Class.mzl' do
     end
   end
 
+  describe '.attr' do
+    it 'defines DSL setter and permanent getter' do
+      klass.mzl.attr(:foo)
+
+      instance = klass.new do
+        foo :bar
+      end
+
+      instance.foo.should == :bar
+
+      expect {
+        instance.foo :bar
+      }.to raise_exception(ArgumentError)
+    end
+  end
+
   describe '.alias' do
     it 'creates another name for a method' do
       child_klass.mzl.alias(:me_am, :i_am)

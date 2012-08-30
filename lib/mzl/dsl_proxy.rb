@@ -51,7 +51,9 @@
             mzl_orig_mm(m, *args, &block)
           rescue NameError
             raise unless _delegate_proc.is_a?(Proc) && delegate = instance.instance_exec(&_delegate_proc)
-            delegate.send(m, *args, &block)
+            delegate.class.mzl.dsl_proxy.with_mzl(delegate) do |delegate|
+              delegate.send(m, *args, &block)
+            end
           end
         end
       end
@@ -87,22 +89,28 @@
       end
     end
 
-    # execute the block against the instance with our methods
-    # available.  afterwards, remove the :persist => false ones
-    def exec_for(instance, &block)
+    # insert mzl methods and yield the instance to a block
+    def with_mzl(instance, &block)
+      raise unless block.is_a?(Proc)
+
       # setup
       insert_dsl(instance)
       insert_mm(instance) unless instance.instance_variable_get(:@__mzl_opaque_scope)
+      instance.instance_variable_set(:@__mzling, true)
 
-      # exec
-      instance.instance_exec(&block)
+      block.call(instance)
 
       # teardown
       extract_dsl(instance)
       extract_mm(instance) unless instance.instance_variable_get(:@__mzl_opaque_scope)
+      instance.send(:remove_instance_variable, :@__mzling)
 
       # return the instance
       instance
+    end
+
+    def exec_for(instance, &block)
+      with_mzl(instance) { |instance| instance.instance_exec(&block) }
     end
   end
 end
